@@ -1,5 +1,5 @@
 import PySimpleGUI as sg
-import socket, sys, pickle, pyperclip, os
+import socket, sys, pickle, pyperclip, os, math
 
 HEADER = 64
 PORT = 5050
@@ -15,8 +15,19 @@ def send_file(conn, filepath):
     pass
 
 
+def convert_size(size_bytes):
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s %s" % (s, size_name[i])
+
+
 def handle_client(conn, addr):
     layout = [[sg.Text('Transfer Files', font=('Helvetica', 32))],
+              [sg.Text(f'Connected to: IP: {addr[0]}  Port: {addr[1]}', font=('Helvetica', 10))],
               [sg.Text('File Select:    ', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='file'), sg.FileBrowse(font=('Helvetica', 15))],
               [sg.Text('Folder Select:', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='folder'), sg.FolderBrowse(font=('Helvetica', 15))], 
               [sg.Text('0/0', font=('Helvetica', 15), key='fraction'), sg.StatusBar('Transfer Status', key='status')],
@@ -24,9 +35,13 @@ def handle_client(conn, addr):
                sg.Button('Send Folder', font=('Helvetica', 15), key='send_folder')]]
     
     window = sg.Window('File Transfer (Server)', layout)
+    file = None
+    file_size = None
+    count = None
 
     while True:
         event, values = window.read()
+        msg = None
         try:
             conn.send(pickle.dumps('OK'))
             msg = pickle.loads(conn.recv(SIZE))
@@ -46,7 +61,7 @@ def handle_client(conn, addr):
             sys.exit()
         
         if event == 'send_file':
-            if not os.DirEntry.is_file(values['file']):
+            if not os.path.exists(values['file']):
                 sg.Popup('Not Valid File')
             else:
                 filepath = values['file']
@@ -56,26 +71,29 @@ def handle_client(conn, addr):
 
                 conn.send(pickle.dumps(file_name))
                 msg = pickle.loads(conn.recv(SIZE))
+                count = 0
+
                 if msg == 'NO':
-                    continue
-                else:
-                    conn.send(pickle.dumps(file_size))
-
-                    line = file.read(SIZE)
-                    count = 0
-
-                    while line:
-                        conn.send(line)
-                        line = file.read(SIZE)
-                        count += SIZE
-                        if count > file_size:
-                            count = file_size
-                        window['status'].update(max=file_size, current_count=count)
-                        window['fraction'].update(f'{count}/{file_size}')
-            
-                    conn.send(pickle.dumps(END_MESSAGE))
-
                     file.close()
+                    file, file_size, count = None, None, None
+
+        if file and file_size and count is not None:
+            if count == 0:
+                conn.send(pickle.dumps(file_size))
+
+            line = file.read(SIZE)
+            conn.send(line)
+
+            count += SIZE
+            if count > file_size:
+                count = file_size
+            window['status'].update(max=file_size, current_count=count)
+            window['fraction'].update(f'{convert_size(count)}/{convert_size(file_size)}')
+
+            if count > file_size:
+                file.close()
+                file, file_size, count = None, None, None
+                conn.send(pickle.dumps(END_MESSAGE))
 
 
 def start():
