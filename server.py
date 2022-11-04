@@ -30,7 +30,7 @@ def handle_client(conn, addr):
               [sg.Text(f'Connected to: IP: {addr[0]}  Port: {addr[1]}', font=('Helvetica', 10))],
               [sg.Text('File Select:    ', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='file'), sg.FileBrowse(font=('Helvetica', 15))],
               [sg.Text('Folder Select:', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='folder'), sg.FolderBrowse(font=('Helvetica', 15))], 
-              [sg.Text('0/0', font=('Helvetica', 15), key='fraction'), sg.StatusBar('Transfer Status', key='status')],
+              [sg.Text('0/0', font=('Helvetica', 15), key='fraction'), sg.ProgressBar(50, orientation='h', size=(83, 20), border_width=2, bar_color=('grey', 'lightgrey'), key='status')],
               [sg.Button('Exit', font=('Helvetica', 15)), sg.Button('Send File', font=('Helvetica', 15), key='send_file'),
                sg.Button('Send Folder', font=('Helvetica', 15), key='send_folder')]]
     
@@ -40,11 +40,12 @@ def handle_client(conn, addr):
     count = None
 
     while True:
-        event, values = window.read()
+        event, values = window.read(timeout=100)
         msg = None
         try:
             conn.send(pickle.dumps('OK'))
             msg = pickle.loads(conn.recv(SIZE))
+            print(msg)
         except socket.error as e:
             print(e)
         

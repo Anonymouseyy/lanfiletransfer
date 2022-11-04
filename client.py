@@ -25,7 +25,7 @@ def transfer_win(client, addr):
     layout = [[sg.Text('Transfer Files', font=('Helvetica', 32))],
               [sg.Text(f'Connected to: IP: {addr[0]}  Port: {addr[1]}', font=('Helvetica', 10))],
               [sg.Text('File Destination: ', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='dest'), sg.FolderBrowse(font=('Helvetica', 15))],
-              [sg.Text('0/0', font=('Helvetica', 15), key='fraction'), sg.StatusBar('Transfer Status', key='status')],
+              [sg.Text('0/0', font=('Helvetica', 15), key='fraction'), sg.ProgressBar(50, orientation='h', size=(86, 20), border_width=2, bar_color=('grey', 'lightgrey'), key='status')],
               [sg.Button('Exit', font=('Helvetica', 15))]]
     
     window = sg.Window('File Transfer (Client)', layout)
@@ -34,11 +34,12 @@ def transfer_win(client, addr):
     count = None
 
     while True:
-        event, values = window.read()
+        event, values = window.read(timeout=100)
         msg = None
         try:
             client.send(pickle.dumps('CONNECTED'))
-            msg = pickle.loads(client.recv(2048))
+            msg = pickle.loads(client.recv(SIZE))
+            print(msg)
         except socket.error as e:
             print(e)
 
@@ -48,20 +49,18 @@ def transfer_win(client, addr):
             sys.exit()
         elif msg != 'OK':
             if write_file and file_size and count is not None:
-                line = pickle.loads(client.recv(SIZE))
-
-                if line == END_MESSAGE:
+                if msg == END_MESSAGE:
                     write_file.close()
                     write_file, file_size, count = None, None, None
+                else:
+                    write_file.write(msg)
+                    count += SIZE
+                    if count > file_size:
+                        count = file_size
+                    window['status'].update(max=file_size, current_count=count)
+                    window['fraction'].update(f'{convert_size(count)}/{convert_size(file_size)}')
 
-                write_file.write(line)
-                count += SIZE
-                if count > file_size:
-                    count = file_size
-                window['status'].update(max=file_size, current_count=count)
-                window['fraction'].update(f'{convert_size(count)}/{convert_size(file_size)}')
-
-                client.send(pickle.dumps('OK'))
+                    client.send(pickle.dumps('OK'))
             elif not os.path.isdir(values['dest']):
                 client.send(pickle.dumps('NO'))
                 sg.popup_no_wait('Select Directory To Transfer To', keep_on_top=True)
@@ -71,7 +70,7 @@ def transfer_win(client, addr):
 
                 path = values['dest']
                 write_file = open(f'{path}\\{msg}', 'wb')
-                file_size = pickle.loads(client.recv(2048))
+                file_size = pickle.loads(client.recv(SIZE))
 
                 count = 0
 
