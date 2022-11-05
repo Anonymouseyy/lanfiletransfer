@@ -1,5 +1,6 @@
 import PySimpleGUI as sg
-import socket, sys, pickle, pyperclip, os, math
+import helpers as h
+import socket, sys, pickle, pyperclip, os
 
 HEADER = 64
 PORT = 5050
@@ -9,20 +10,6 @@ ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = '!DISCONNECT'
 END_MESSAGE = 'END'
-
-
-def send_file(conn, filepath):
-    pass
-
-
-def convert_size(size_bytes):
-    if size_bytes == 0:
-        return "0B"
-    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return "%s %s" % (s, size_name[i])
 
 
 def handle_client(conn, addr):
@@ -40,24 +27,23 @@ def handle_client(conn, addr):
     count = None
 
     while True:
-        event, values = window.read(timeout=100)
+        event, values = window.read(timeout=1)
         msg = None
         try:
-            conn.send(pickle.dumps('OK'))
+            if file is None and file_size is None and count is None:
+                conn.send(h.pickle_msg('OK', SIZE))
             msg = pickle.loads(conn.recv(SIZE))
-            print(msg)
         except socket.error as e:
             print(e)
         
         if msg == DISCONNECT_MESSAGE:
             window.close()
-            conn.send(pickle.dumps(DISCONNECT_MESSAGE))
             conn.close()
             sys.exit()
 
         if event == sg.WIN_CLOSED or event == 'Exit':
             window.close()
-            conn.send(pickle.dumps(DISCONNECT_MESSAGE))
+            conn.send(h.pickle_msg(DISCONNECT_MESSAGE, SIZE))
             conn.close()
             sys.exit()
         
@@ -70,7 +56,7 @@ def handle_client(conn, addr):
                 file_size = os.path.getsize(filepath)
                 file_name = os.path.basename(filepath)
 
-                conn.send(pickle.dumps(file_name))
+                conn.send(h.pickle_msg(file_name, SIZE))
                 msg = pickle.loads(conn.recv(SIZE))
                 count = 0
 
@@ -80,21 +66,21 @@ def handle_client(conn, addr):
 
         if file and file_size and count is not None:
             if count == 0:
-                conn.send(pickle.dumps(file_size))
+                conn.send(h.pickle_msg(file_size, SIZE))
 
-            line = file.read(SIZE)
-            conn.send(line)
+            line = file.read(SIZE-50)
+            conn.send(h.pickle_msg(line, SIZE))
 
             count += SIZE
             if count > file_size:
                 count = file_size
             window['status'].update(max=file_size, current_count=count)
-            window['fraction'].update(f'{convert_size(count)}/{convert_size(file_size)}')
+            window['fraction'].update(f'{h.convert_size(count)}/{h.convert_size(file_size)}')
 
-            if count > file_size:
+            if count >= file_size:
                 file.close()
                 file, file_size, count = None, None, None
-                conn.send(pickle.dumps(END_MESSAGE))
+                conn.send(h.pickle_msg(END_MESSAGE, SIZE))
 
 
 def start():

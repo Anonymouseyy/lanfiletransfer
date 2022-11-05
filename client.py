@@ -1,5 +1,6 @@
 import PySimpleGUI as sg
-import socket, sys, pickle, os, math
+import helpers as h
+import socket, sys, pickle, os
 
 
 # Socket Variables
@@ -9,16 +10,6 @@ DISCONNECT_MESSAGE = '!DISCONNECT'
 END_MESSAGE = 'END'
 SIZE = 2048
 ADDR = None
-
-
-def convert_size(size_bytes):
-    if size_bytes == 0:
-        return "0B"
-    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return "%s %s" % (s, size_name[i])
 
 
 def transfer_win(client, addr):
@@ -34,12 +25,11 @@ def transfer_win(client, addr):
     count = None
 
     while True:
-        event, values = window.read(timeout=100)
+        event, values = window.read(timeout=1)
         msg = None
         try:
-            client.send(pickle.dumps('CONNECTED'))
+            client.send(h.pickle_msg('CONNECTED', SIZE))
             msg = pickle.loads(client.recv(SIZE))
-            print(msg)
         except socket.error as e:
             print(e)
 
@@ -58,15 +48,15 @@ def transfer_win(client, addr):
                     if count > file_size:
                         count = file_size
                     window['status'].update(max=file_size, current_count=count)
-                    window['fraction'].update(f'{convert_size(count)}/{convert_size(file_size)}')
+                    window['fraction'].update(f'{h.convert_size(count)}/{h.convert_size(file_size)}')
 
-                    client.send(pickle.dumps('OK'))
+                    client.send(h.pickle_msg('OK', SIZE))
             elif not os.path.isdir(values['dest']):
-                client.send(pickle.dumps('NO'))
+                client.send(h.pickle_msg('NO', SIZE))
                 sg.popup_no_wait('Select Directory To Transfer To', keep_on_top=True)
             else:
-                client.send(pickle.dumps('OK'))
-                client.send(pickle.dumps('OK'))
+                client.send(h.pickle_msg('OK', SIZE))
+                client.send(h.pickle_msg('OK', SIZE))
 
                 path = values['dest']
                 write_file = open(f'{path}\\{msg}', 'wb')
@@ -75,7 +65,7 @@ def transfer_win(client, addr):
                 count = 0
 
         if event == sg.WIN_CLOSED or event == 'Exit':
-            client.send(pickle.dumps(DISCONNECT_MESSAGE))
+            client.send(h.pickle_msg(DISCONNECT_MESSAGE, SIZE))
             window.close()
             client.close()
             sys.exit()
