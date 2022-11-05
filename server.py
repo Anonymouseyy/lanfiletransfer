@@ -15,11 +15,11 @@ END_MESSAGE = 'END'
 def handle_client(conn, addr):
     layout = [[sg.Text('Transfer Files', font=('Helvetica', 32))],
               [sg.Text(f'Connected to: IP: {addr[0]}  Port: {addr[1]}', font=('Helvetica', 10))],
-              [sg.Text('File Select:    ', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='file'), sg.FileBrowse(font=('Helvetica', 15))],
-              [sg.Text('Folder Select:', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='folder'), sg.FolderBrowse(font=('Helvetica', 15))], 
-              [sg.Text('0/0', font=('Helvetica', 15), key='fraction'), sg.ProgressBar(50, orientation='h', size=(83, 20), border_width=2, bar_color=('grey', 'lightgrey'), key='status')],
+              [sg.Text('File Select:', font=('Helvetica', 20)), sg.Push(), sg.Input('', font=('Helvetica', 20), key='file'), sg.FileBrowse(font=('Helvetica', 15))],
+              [sg.Text('Folder Select:', font=('Helvetica', 20)), sg.Push(), sg.Input('', font=('Helvetica', 20), key='folder'), sg.FolderBrowse(font=('Helvetica', 15))],
+              [sg.ProgressBar(50, orientation='h', size=(90, 20), border_width=2, bar_color=('grey', 'lightgrey'), key='status')],
               [sg.Button('Exit', font=('Helvetica', 15)), sg.Button('Send File', font=('Helvetica', 15), key='send_file'),
-               sg.Button('Send Folder', font=('Helvetica', 15), key='send_folder')]]
+               sg.Button('Send Folder', font=('Helvetica', 15), key='send_folder'), sg.Push(), sg.Text('0/0', font=('Helvetica', 15), key='fraction')]]
     
     window = sg.Window('File Transfer (Server)', layout)
     file = None
@@ -50,6 +50,8 @@ def handle_client(conn, addr):
         if event == 'send_file':
             if not os.path.exists(values['file']):
                 sg.Popup('Not Valid File')
+            elif file and file_size and count is not None:
+                sg.Popup('Currently Send Files... Please Wait')
             else:
                 filepath = values['file']
                 file = open(filepath, 'rb')
@@ -63,6 +65,10 @@ def handle_client(conn, addr):
                 if msg == 'NO':
                     file.close()
                     file, file_size, count = None, None, None
+
+        if event == 'send_folder':
+            if not os.path.isdir('folder'):
+                sg.Popup('Not Valid Folder')
 
         if file and file_size and count is not None:
             if count == 0:

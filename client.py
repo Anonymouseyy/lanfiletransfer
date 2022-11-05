@@ -15,9 +15,9 @@ ADDR = None
 def transfer_win(client, addr):
     layout = [[sg.Text('Transfer Files', font=('Helvetica', 32))],
               [sg.Text(f'Connected to: IP: {addr[0]}  Port: {addr[1]}', font=('Helvetica', 10))],
-              [sg.Text('File Destination: ', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='dest'), sg.FolderBrowse(font=('Helvetica', 15))],
-              [sg.Text('0/0', font=('Helvetica', 15), key='fraction'), sg.ProgressBar(50, orientation='h', size=(86, 20), border_width=2, bar_color=('grey', 'lightgrey'), key='status')],
-              [sg.Button('Exit', font=('Helvetica', 15))]]
+              [sg.Text('File Destination: ', font=('Helvetica', 20)), sg.Push(), sg.Input('', font=('Helvetica', 20), key='dest'), sg.FolderBrowse(font=('Helvetica', 15))],
+              [sg.ProgressBar(50, orientation='h', size=(92, 20), border_width=2, bar_color=('grey', 'lightgrey'), key='status')],
+              [sg.Button('Exit', font=('Helvetica', 15)), sg.Push(), sg.Text('0/0', font=('Helvetica', 15), key='fraction')]]
     
     window = sg.Window('File Transfer (Client)', layout)
     write_file = None
@@ -36,7 +36,7 @@ def transfer_win(client, addr):
         if msg == DISCONNECT_MESSAGE:
             window.close()
             client.close()
-            sys.exit()
+            break
         elif msg != 'OK':
             if write_file and file_size and count is not None:
                 if msg == END_MESSAGE:
@@ -70,12 +70,14 @@ def transfer_win(client, addr):
             client.close()
             sys.exit()
 
+    start()
+
 
 def start():
     global ADDR
     layout = [[sg.Text('Transfer Files', font=('Helvetica', 32))],
               [sg.Text('Server: ', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='server_in')],
-              [sg.Text('Port: ', font=('Helvetica', 20)), sg.Input('', font=('Helvetica', 20), key='port_in', pad=(35, 0))],
+              [sg.Text('Port: ', font=('Helvetica', 20)), sg.Push(), sg.Input('', font=('Helvetica', 20), key='port_in')],
               [sg.Button('Exit', font=('Helvetica', 15)), sg.Button('Connect', font=('Helvetica', 15))]]
     
     window = sg.Window('File Transfer (Client)', layout)
