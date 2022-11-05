@@ -29,7 +29,10 @@ def transfer_win(client, addr):
         msg = None
         try:
             client.send(h.pickle_msg('CONNECTED', SIZE))
-            msg = pickle.loads(client.recv(SIZE))
+            msg = client.recv(SIZE)
+            while len(msg) < SIZE:
+                msg += client.recv(SIZE-len(msg))
+            msg = pickle.loads(msg)
         except socket.error as e:
             print(e)
 
@@ -60,7 +63,11 @@ def transfer_win(client, addr):
 
                 path = values['dest']
                 write_file = open(f'{path}\\{msg}', 'wb')
-                file_size = pickle.loads(client.recv(SIZE))
+
+                msg = client.recv(SIZE)
+                while len(msg) < SIZE:
+                    msg += client.recv(SIZE - len(msg))
+                file_size = pickle.loads(msg)
 
                 count = 0
 
@@ -95,6 +102,7 @@ def start():
                 try:
                     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     ADDR = values['server_in'], int(values['port_in'])
+                    print(ADDR)
                     client.connect(ADDR)
                     window.close()
                 except:

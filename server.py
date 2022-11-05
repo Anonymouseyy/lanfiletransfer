@@ -5,7 +5,7 @@ import socket, sys, pickle, pyperclip, os
 HEADER = 64
 PORT = 5050
 SIZE = 2048
-SERVER = socket.gethostbyname(socket.gethostname())
+SERVER = # IP HERE
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = '!DISCONNECT'
@@ -32,7 +32,10 @@ def handle_client(conn, addr):
         try:
             if file is None and file_size is None and count is None:
                 conn.send(h.pickle_msg('OK', SIZE))
-            msg = pickle.loads(conn.recv(SIZE))
+            msg = conn.recv(SIZE)
+            while len(msg) < SIZE:
+                msg += conn.recv(SIZE - len(msg))
+            msg = pickle.loads(msg)
         except socket.error as e:
             print(e)
         
@@ -59,7 +62,10 @@ def handle_client(conn, addr):
                 file_name = os.path.basename(filepath)
 
                 conn.send(h.pickle_msg(file_name, SIZE))
-                msg = pickle.loads(conn.recv(SIZE))
+                msg = conn.recv(SIZE)
+                while len(msg) < SIZE:
+                    msg += conn.recv(SIZE - len(msg))
+                msg = pickle.loads(msg)
                 count = 0
 
                 if msg == 'NO':
