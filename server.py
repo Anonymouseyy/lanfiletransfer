@@ -5,7 +5,7 @@ import socket, sys, pickle, pyperclip, os
 HEADER = 64
 PORT = 5050
 SIZE = 2048
-SERVER = 'localhost'
+SERVER = # IP HERE
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = '!DISCONNECT'
@@ -24,11 +24,6 @@ def handle_client(conn, addr):
     window = sg.Window('File Transfer (Server)', layout)
     file = None
     file_size = None
-    subfolders = None
-    files = None
-    cur_file = None
-    subfolder_items =None
-    layer = None
     count = None
 
     while True:
@@ -72,38 +67,14 @@ def handle_client(conn, addr):
                     msg += conn.recv(SIZE - len(msg))
                 msg = pickle.loads(msg)
                 count = 0
-                layer = 0
 
                 if msg == 'NO':
                     file.close()
                     file, file_size, count = None, None, None
 
         if event == 'send_folder':
-            if not os.path.isdir(values['folder']):
+            if not os.path.isdir('folder'):
                 sg.Popup('Not Valid Folder')
-            else:
-                folderpath = values['folder']
-                subfolders = []
-                files = []
-                dir_name = os.path.basename(folderpath)
-
-                for item in os.listdir(folderpath):
-                    x = os.path.join(folderpath, item)
-                    if os.path.isdir(x):
-                        subfolders.append(x)
-                    else:
-                        files.append(x)
-
-                conn.send(h.pickle_msg(dir_name, SIZE))
-                msg = conn.recv(SIZE)
-                while len(msg) < SIZE:
-                    msg += conn.recv(SIZE - len(msg))
-                msg = pickle.loads(msg)
-                subfolder_items = dict()
-                count = 0
-
-                if msg == 'NO':
-                    subfolders, files, count, subfolder_items = None, None, None, None
 
         if file and file_size and count is not None:
             if count == 0:
@@ -112,7 +83,7 @@ def handle_client(conn, addr):
             line = file.read(SIZE-50)
             conn.send(h.pickle_msg(line, SIZE))
 
-            count += SIZE - 50
+            count += SIZE
             if count > file_size:
                 count = file_size
             window['status'].update(max=file_size, current_count=count)
@@ -121,64 +92,6 @@ def handle_client(conn, addr):
             if count >= file_size:
                 file.close()
                 file, file_size, count = None, None, None
-                conn.send(h.pickle_msg(END_MESSAGE, SIZE))
-
-        if subfolders and files and count is not None:
-            if count == 0:
-                if layer == 0:
-                    layer += 1
-                    subfolder_items[f'{layer}folders'] = list()
-                    subfolder_items[f'{layer}files'] = list()
-                    subfolder = subfolders[0]
-                    subfolders.pop(0)
-
-                    for item in os.listdir(subfolder):
-                        x = os.path.join(subfolder, item)
-                        if os.path.isdir(x):
-                            subfolder_items[f'{layer}folders'].append(x)
-                        else:
-                            subfolder_items[f'{layer}files'].append(x)
-
-                    dir_name = os.path.basename(subfolder)
-                    conn.send(h.pickle_msg(dir_name, SIZE))
-                elif layer != 0 and subfolder_items[f'{layer}folders']:
-                    pass
-                if files:
-                    filepath = files[0]
-                    cur_file = open(filepath, 'rb')
-                    file_size = os.path.getsize(filepath)
-                    file_name = os.path.basename(filepath)
-
-                    conn.send(h.pickle_msg(file_name, SIZE))
-                    conn.send(h.pickle_msg(file_size, SIZE))
-                else:
-                    layer += 1
-                    subfolder_items[f'{layer}folders'] = list()
-                    subfolder_items[f'{layer}files'] = list()
-                    subfolder = subfolders[0]
-
-                    for item in os.listdir(subfolder):
-                        x = os.path.join(subfolder, item)
-                        if os.path.isdir(x):
-                            subfolder_items[f'{layer}folders'].append(x)
-                        else:
-                            subfolder_items[f'{layer}files'].append(x)
-
-                    dir_name = os.path.basename(subfolder)
-                    conn.send(h.pickle_msg(dir_name, SIZE))
-
-            line = cur_file.read(SIZE - 50)
-            conn.send(h.pickle_msg(line, SIZE))
-
-            count += SIZE - 50
-            if count > file_size:
-                count = file_size
-            window['status'].update(max=file_size, current_count=count)
-            window['fraction'].update(f'{h.convert_size(count)}/{h.convert_size(file_size)}')
-
-            if count >= file_size:
-                file.close()
-                dir_name, count = None, None
                 conn.send(h.pickle_msg(END_MESSAGE, SIZE))
 
 
