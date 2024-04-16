@@ -8,7 +8,7 @@ HEADER = 64
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = '!DISCONNECT'
 END_MESSAGE = 'END'
-SIZE = 2048
+SIZE = 8192
 ADDR = None
 
 
@@ -46,14 +46,15 @@ def transfer_win(client, addr):
                     write_file.close()
                     write_file, file_size, count = None, None, None
                 else:
-                    write_file.write(msg)
-                    count += SIZE
-                    if count > file_size:
-                        count = file_size
-                    window['status'].update(max=file_size, current_count=count)
-                    window['fraction'].update(f'{h.convert_size(count)}/{h.convert_size(file_size)}')
-
-                    client.send(h.pickle_msg('OK', SIZE))
+                    if msg is None:
+                        pass
+                    else:
+                        write_file.write(msg)
+                        count += SIZE
+                        if count > file_size:
+                            count = file_size
+                        window['status'].update(max=file_size, current_count=count)
+                        window['fraction'].update(f'{h.convert_size(count)}/{h.convert_size(file_size)}')
             elif not os.path.isdir(values['dest']):
                 client.send(h.pickle_msg('NO', SIZE))
                 sg.popup_no_wait('Select Directory To Transfer To', keep_on_top=True)
@@ -102,7 +103,6 @@ def start():
                 try:
                     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     ADDR = values['server_in'], int(values['port_in'])
-                    print(ADDR)
                     client.connect(ADDR)
                     window.close()
                 except:
